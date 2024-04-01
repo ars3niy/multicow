@@ -91,18 +91,15 @@ multicow --bottom -H 5 "short line"
                 ||     ||
 ```
 
-This cow can actually speak figlet:
+This cow can take line feeds from command line:
 
 ```
-$ figlet test |multicow
- ____________________
-/  _            _    \
-| | |_ ___  ___| |_  |
-| | __/ _ \/ __| __| |
-| | ||  __/\__ \ |_  |
-|  \__\___||___/\__| |
-\                    /
- --------------------
+$ multicow "two
+> lines"
+ _______
+/ two   \
+\ lines /
+ -------
         \   ^__^
          \  (oo)\_______
             (__)\       )\/\
