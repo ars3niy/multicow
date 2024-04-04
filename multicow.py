@@ -322,16 +322,16 @@ def make_bubble(content, args, height_remaining):
     lines = []
     for line in content.split("\n"):
         lines += ColouredWrapper(args.width).wrap(line) if args.width else [line]
-    lengths = list(map(lambda s: visible_length(s), lines))
 
     # Truncate message at the end if too many lines
     if height_remaining is not None and (len(lines) > height_remaining):
         lines = lines[:height_remaining]
-        if args.width and (lengths[-1] + 3 > args.width):
+        if args.width and (visible_length(lines[-1]) + 3 > args.width):
             lines[-1] = coloured_remove_suffix(lines[-1], 3) + "..."
         else:
             lines[-1] += "..."
 
+    lengths = list(map(lambda s: visible_length(s), lines))
     width = max(lengths) if lines else 0
     lines = list(map(lambda s: with_colour_reset(s), lines))
 
