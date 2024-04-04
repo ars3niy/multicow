@@ -1,4 +1,4 @@
-# multicow - cowsay with multi-bubble support
+# multicow - cowsay with multi-bubble support and more
 
 ## Features
 
@@ -100,6 +100,20 @@ $ multicow "two
 / two   \
 \ lines /
  -------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+```
+
+Text with normal-sized unicode characters is correctly formatted in terminals that support it:
+
+```
+multicow Ελληνικη
+ __________
+< Ελληνικη >
+ ----------
         \   ^__^
          \  (oo)\_______
             (__)\       )\/\
