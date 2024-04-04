@@ -112,7 +112,7 @@ Escape sequences for text colour are supported:
 ```
 multicow -W 10 "$(tput setaf 4)Hello $(tput setaf 11)world"
 ```
-<img src="cowcolour.png"/>
+<img src="doc/cowcolour.png"/>
 
 And it can be invoked as a python function:
 
