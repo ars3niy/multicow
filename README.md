@@ -108,18 +108,11 @@ $ multicow "two
 ```
 
 Escape sequences for text colour are supported:
-<pre>
+
+```
 multicow -W 10 "$(tput setaf 4)Hello $(tput setaf 11)world"
- _______
-/ <span style="color:blue">Hello</span> \
-\ <span style="color:yellow">world</span> /
- -------
-        \   ^__^
-         \  (oo)\_______
-            (__)\       )\/\
-                ||----w |
-                ||     ||
-</pre>
+```
+<img src="cowcolour.png"/>
 
 And it can be invoked as a python function:
 
