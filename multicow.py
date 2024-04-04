@@ -7,6 +7,148 @@ import pathlib
 import sys
 import textwrap
 
+def visible_length(s):
+    result = 0
+    pos = 0
+    while pos < len(s):
+        escstart = s.find("\x1b[", pos)
+        if escstart < 0:
+            return result + len(s) - pos
+        result += escstart - pos
+        escend = s.find("m", escstart)
+        if escend < 0:
+            return result
+        pos = escend + 1
+
+def with_colour_reset(s):
+    if s.find("\x1b[") < 0:
+        return s
+    return s + "\x1b[37m"
+
+def coloured_remove_suffix(s, n):
+    to_remove = n
+    pos = len(s)
+    while (to_remove > 0) and (pos > 0):
+        escstart = s.rfind("\x1b[", 0, pos)
+        if escstart < 0:
+            break
+        escend = s.find("m", escstart, pos)
+        if escend > 0:
+            visible = pos - escend - 1
+            if visible > to_remove:
+                pos = escend + 1 + (visible - to_remove)
+                to_remove = 0
+            else:
+                to_remove -= visible
+                pos = escstart
+        else:
+            pos = escstart
+    return s[:pos - min(pos, to_remove)]
+
+class ColouredWrapper(textwrap.TextWrapper):
+    def _wrap_chunks(self, chunks):
+        """_wrap_chunks(chunks : [string]) -> [string]
+
+        Wrap a sequence of text chunks and return a list of lines of
+        length 'self.width' or less.  (If 'break_long_words' is false,
+        some lines may be longer than this.)  Chunks correspond roughly
+        to words and the whitespace between them: each chunk is
+        indivisible (modulo 'break_long_words'), but a line break can
+        come between any two chunks.  Chunks should not have internal
+        whitespace; ie. a chunk is either all whitespace or a "word".
+        Whitespace chunks will be removed from the beginning and end of
+        lines, but apart from that whitespace is preserved.
+        """
+        lines = []
+        if self.width <= 0:
+            raise ValueError("invalid width %r (must be > 0)" % self.width)
+        if self.max_lines is not None:
+            if self.max_lines > 1:
+                indent = self.subsequent_indent
+            else:
+                indent = self.initial_indent
+            if len(indent) + len(self.placeholder.lstrip()) > self.width:
+                raise ValueError("placeholder too large for max width")
+
+        # Arrange in reverse order so items can be efficiently popped
+        # from a stack of chucks.
+        chunks.reverse()
+
+        while chunks:
+
+            # Start the list of chunks that will make up the current line.
+            # cur_len is just the length of all the chunks in cur_line.
+            cur_line = []
+            cur_len = 0
+
+            # Figure out which static string will prefix this line.
+            if lines:
+                indent = self.subsequent_indent
+            else:
+                indent = self.initial_indent
+
+            # Maximum width for this line.
+            width = self.width - len(indent)
+
+            # First chunk on line is whitespace -- drop it, unless this
+            # is the very beginning of the text (ie. no lines started yet).
+            if self.drop_whitespace and chunks[-1].strip() == '' and lines:
+                del chunks[-1]
+
+            while chunks:
+                l = visible_length(chunks[-1])
+
+                # Can at least squeeze this chunk onto the current line.
+                if cur_len + l <= width:
+                    cur_line.append(chunks.pop())
+                    cur_len += l
+
+                # Nope, this line is full.
+                else:
+                    break
+
+            # The current line is full, and the next chunk is too big to
+            # fit on *any* line (not just this one).
+            if chunks and visible_length(chunks[-1]) > width:
+                self._handle_long_word(chunks, cur_line, cur_len, width)
+                cur_len = sum(map(visible_length, cur_line))
+
+            # If the last chunk on this line is all whitespace, drop it.
+            if self.drop_whitespace and cur_line and cur_line[-1].strip() == '':
+                cur_len -= visible_length(cur_line[-1])
+                del cur_line[-1]
+
+            if cur_line:
+                if (self.max_lines is None or
+                    len(lines) + 1 < self.max_lines or
+                    (not chunks or
+                     self.drop_whitespace and
+                     len(chunks) == 1 and
+                     not chunks[0].strip()) and cur_len <= width):
+                    # Convert current line back to a string and store it in
+                    # list of all lines (return value).
+                    lines.append(indent + ''.join(cur_line))
+                else:
+                    while cur_line:
+                        if (cur_line[-1].strip() and
+                            cur_len + len(self.placeholder) <= width):
+                            cur_line.append(self.placeholder)
+                            lines.append(indent + ''.join(cur_line))
+                            break
+                        cur_len -= visible_length(cur_line[-1])
+                        del cur_line[-1]
+                    else:
+                        if lines:
+                            prev_line = lines[-1].rstrip()
+                            if (visible_length(prev_line) + len(self.placeholder) <=
+                                    self.width):
+                                lines[-1] = prev_line + self.placeholder
+                                break
+                        lines.append(indent + self.placeholder.lstrip())
+                    break
+
+        return lines
+
 cowpath = list(s for s in (os.getenv("COWPATH") or "").split(":") if s)
 cowpath += ["/usr/share/cowsay/cows"]
 
@@ -179,17 +321,19 @@ def make_bubble(content, args, height_remaining):
         content = content[:-1]
     lines = []
     for line in content.split("\n"):
-        lines += textwrap.wrap(line, width=args.width) if args.width else [line]
+        lines += ColouredWrapper(args.width).wrap(line) if args.width else [line]
+    lengths = list(map(lambda s: visible_length(s), lines))
 
     # Truncate message at the end if too many lines
     if height_remaining is not None and (len(lines) > height_remaining):
         lines = lines[:height_remaining]
-        if args.width and (len(lines[-1]) + 3 > args.width):
-            lines[-1] = lines[-1][:args.width-3] + "..."
+        if args.width and (lengths[-1] + 3 > args.width):
+            lines[-1] = coloured_remove_suffix(lines[-1], 3) + "..."
         else:
             lines[-1] += "..."
 
-    width = max(len(s) for s in lines) if lines else 0
+    width = max(lengths) if lines else 0
+    lines = list(map(lambda s: with_colour_reset(s), lines))
 
     if args.think:
         left = "("
@@ -214,10 +358,10 @@ def make_bubble(content, args, height_remaining):
     if len(lines) <= 1:
         output += [left + " " + (lines[0] if lines else "") + " " + right]
     else:
-        output += [topleft + " " + lines[0] + " "*(width - len(lines[0])) + " " + topright]
+        output += [topleft + " " + lines[0] + " "*(width - lengths[0]) + " " + topright]
         for i in range(1, len(lines)-1):
-            output += [midleft + " " + lines[i] + " "*(width - len(lines[i])) + " " + midright]
-        output += [botleft + " " + lines[-1] + " "*(width - len(lines[-1])) + " " + botright]
+            output += [midleft + " " + lines[i] + " "*(width - lengths[i]) + " " + midright]
+        output += [botleft + " " + lines[-1] + " "*(width - lengths[-1]) + " " + botright]
     output += [" " + "-"*(width+2)]
     return output
 

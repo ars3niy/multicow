@@ -7,7 +7,7 @@ Custom cow files may not be, because they are actually perl scripts and only a t
 
 Eye and tongue customisation is supported.
 
-New features: line feed support, multiple bubbles, height limit, bottom alignment.
+New features: line feed support, multiple bubbles, height limit, bottom alignment, text colour.
 
 ## Installation
 
@@ -106,6 +106,20 @@ $ multicow "two
                 ||----w |
                 ||     ||
 ```
+
+Escape sequences for text colour are supported:
+<pre>
+multicow -W 10 "$(tput setaf 4)Hello $(tput setaf 11)world"
+ _______
+/ <span style="color:blue">Hello</span> \
+\ <span style="color:yellow">world</span> /
+ -------
+        \   ^__^
+         \  (oo)\_______
+            (__)\       )\/\
+                ||----w |
+                ||     ||
+</pre>
 
 And it can be invoked as a python function:
 
