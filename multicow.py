@@ -19,6 +19,7 @@ def visible_length(s):
         if escend < 0:
             return result
         pos = escend + 1
+    return result
 
 def with_colour_reset(s):
     if s.find("\x1b[") < 0:
