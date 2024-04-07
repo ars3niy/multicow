@@ -23,7 +23,7 @@ def visible_length(s):
 def with_colour_reset(s):
     if s.find("\x1b[") < 0:
         return s
-    return s + "\x1b[37m"
+    return s + "\x1b[40m\x1b[37m"
 
 def coloured_remove_suffix(s, n):
     to_remove = n
